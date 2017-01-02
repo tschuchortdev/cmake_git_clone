@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.8)
+cmake_minimum_required(VERSION 2.8.7)
 
 include(${PROJECT_SOURCE_DIR}/cmake/Utils.cmake)
 include(CMakeParseArguments)
