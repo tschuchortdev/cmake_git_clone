@@ -1,5 +1,5 @@
 # CMake Git Clone
-![build status](https://travis-ci.org/tschuchortdev/cmake_git_clone.svg?branch=master)
+![build status](https://travis-ci.org/tschuchortdev/cmake_git_clone.svg?branch=master) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/tschuchortdev/cmake_git_clone/issues)
 
 CMake module to automatically clone git repositories during configure time.
 
