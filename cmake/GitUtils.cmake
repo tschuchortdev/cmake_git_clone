@@ -140,7 +140,7 @@ function(git_clone)
                 OUTPUT_VARIABLE     git_output)
     elseif(PARGS_GIT_BRANCH OR PARGS_GIT_COMMIT)
         execute_process(
-                COMMAND             ${GIT_EXECUTABLE} checkout ${PARGS_GIT_BRANCH}
+                COMMAND             ${GIT_EXECUTABLE} checkout ${PARGS_GIT_BRANCH} ${PARGS_GIT_COMMIT}
                 WORKING_DIRECTORY   ${${SOURCE_DIR}}
                 OUTPUT_VARIABLE     git_output)
     else()
