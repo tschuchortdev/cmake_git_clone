@@ -49,12 +49,25 @@ endif()
 #           optional
 #           don't print status messages
 #
+#       SOURCE_DIR_VARIABLE
+#           optional
+#           the variable will be set to contain the path to clonned directory.
+#           if not set path will be set in <project name>_SOURCE_DIR
+#
+#       CLONE_RESULT_VARIABLE
+#           optional
+#           the variable will be set to contain the clone result. TRUE - success, FALSE - error
+#           if not set result will be set in <project name>_CLONE_RESULT
+#
+#
 #
 # OUTPUT VARIABLES:
 #       <project name>_SOURCE_DIR
+#           optional, exists when SOURCE_DIR_VARIABLE not set      
 #           top level source directory of the cloned project
 #
 #       <project name>_CLONE_RESULT
+#           optional, exists when CLONE_RESULT_VARIABLE not set      
 #           Result of git_clone function. TRUE - success, FALSE - error
 #
 #
@@ -72,13 +85,12 @@ endif()
 function(git_clone)
 
     cmake_parse_arguments(
-            PARGS                                                               # prefix of output variables
-            "QUIET"                                                             # list of names of the boolean arguments (only defined ones will be true)
-            "PROJECT_NAME;GIT_URL;GIT_TAG;GIT_BRANCH;GIT_COMMIT;DIRECTORY"      # list of names of mono-valued arguments
-            ""                                                                  # list of names of multi-valued arguments (output variables are lists)
-            ${ARGN}                                                             # arguments of the function to parse, here we take the all original ones
-    ) # remaining unparsed arguments can be found in PARGS_UNPARSED_ARGUMENTS
-
+            PARGS                                                                                                         # prefix of output variables
+            "QUIET"                                                                                                       # list of names of the boolean arguments (only defined ones will be true)
+            "PROJECT_NAME;GIT_URL;GIT_TAG;GIT_BRANCH;GIT_COMMIT;DIRECTORY;SOURCE_DIR_VARIABLE;CLONE_RESULT_VARIABLE"      # list of names of mono-valued arguments
+            ""                                                                                                            # list of names of multi-valued arguments (output variables are lists)
+            ${ARGN}                                                                                                       # arguments of the function to parse, here we take the all original ones
+    )                                                                                                                     # remaining unparsed arguments can be found in PARGS_UNPARSED_ARGUMENTS
     if(NOT PARGS_PROJECT_NAME)
         message(FATAL_ERROR "You must provide a project name")
     endif()
@@ -91,11 +103,25 @@ function(git_clone)
         set(PARGS_DIRECTORY ${CMAKE_BINARY_DIR})
     endif()
 
-    set(${PARGS_PROJECT_NAME}_SOURCE_DIR
-            ${PARGS_DIRECTORY}/${PARGS_PROJECT_NAME}
-            CACHE INTERNAL "" FORCE) # makes var visible everywhere because PARENT_SCOPE wouldn't include this scope
-    
-    set(SOURCE_DIR ${PARGS_PROJECT_NAME}_SOURCE_DIR)
+    if(NOT PARGS_SOURCE_DIR_VARIABLE)
+        set(${PARGS_PROJECT_NAME}_SOURCE_DIR
+                ${PARGS_DIRECTORY}/${PARGS_PROJECT_NAME}
+                CACHE INTERNAL "" FORCE) # makes var visible everywhere because PARENT_SCOPE wouldn't include this scope
+        
+        set(SOURCE_DIR ${PARGS_PROJECT_NAME}_SOURCE_DIR)
+    else()
+        set(${PARGS_SOURCE_DIR_VARIABLE}
+                ${PARGS_DIRECTORY}/${PARGS_PROJECT_NAME}
+                CACHE INTERNAL "" FORCE) # makes var visible everywhere because PARENT_SCOPE wouldn't include this scope
+        
+        set(SOURCE_DIR ${PARGS_SOURCE_DIR_VARIABLE})
+    endif()
+
+    if(NOT PARGS_CLONE_RESULT_VARIABLE)   
+        set(CLONE_RESULT ${PARGS_PROJECT_NAME}_CLONE_RESULT)
+    else()
+        set(CLONE_RESULT ${PARGS_CLONE_RESULT_VARIABLE})
+    endif()    
 
     # check that only one of GIT_TAG xor GIT_BRANCH xor GIT_COMMIT was passed
     at_most_one(at_most_one_tag ${PARGS_GIT_TAG} ${PARGS_GIT_BRANCH} ${PARGS_GIT_COMMIT})
@@ -126,13 +152,17 @@ function(git_clone)
                 RESULT_VARIABLE     git_result
                 OUTPUT_VARIABLE     git_output)
                 if(NOT git_result EQUAL "0")
-                    set(${PARGS_PROJECT_NAME}_CLONE_RESULT FALSE CACHE INTERNAL "" FORCE)
-                    message(WARNING "${PARGS_PROJECT_NAME}  submodule update error") #ToDo: maybe FATAL_ERROR?
+                    set(${CLONE_RESULT} FALSE CACHE INTERNAL "" FORCE)
+                    if(NOT PARGS_QUIET)
+                        message(WARNING "${PARGS_PROJECT_NAME}  submodule update error") #ToDo: maybe FATAL_ERROR?
+                    endif()
                     return()
                 endif()
         else()
-            set(${PARGS_PROJECT_NAME}_CLONE_RESULT FALSE CACHE INTERNAL "" FORCE)
-            message(WARNING "${PARGS_PROJECT_NAME} pull error") #ToDo: maybe FATAL_ERROR?
+            set(${CLONE_RESULT} FALSE CACHE INTERNAL "" FORCE)
+            if(NOT PARGS_QUIET)
+                message(WARNING "${PARGS_PROJECT_NAME} pull error")  #ToDo: maybe FATAL_ERROR?
+            endif()
             return()
         endif()
     else()
@@ -146,8 +176,10 @@ function(git_clone)
                 RESULT_VARIABLE     git_result
                 OUTPUT_VARIABLE     git_output)
         if(NOT git_result EQUAL "0")
-            set(${PARGS_PROJECT_NAME}_CLONE_RESULT FALSE CACHE INTERNAL "" FORCE)
-            message(WARNING "${PARGS_PROJECT_NAME} clone error")  #ToDo: maybe FATAL_ERROR?
+            set(${CLONE_RESULT} FALSE CACHE INTERNAL "" FORCE)
+            if(NOT PARGS_QUIET)
+                message(WARNING "${PARGS_PROJECT_NAME} clone error")  #ToDo: maybe FATAL_ERROR?
+            endif()
             return()
         endif()        
     endif()
@@ -172,7 +204,9 @@ function(git_clone)
                 RESULT_VARIABLE     git_result
                 OUTPUT_VARIABLE     git_output)
     else()
-        message(STATUS "no tag specified, defaulting to master")
+        if(NOT PARGS_QUIET)
+            message(STATUS "no tag specified, defaulting to master")
+        endif()
         execute_process(
                 COMMAND             ${GIT_EXECUTABLE} checkout master
                 WORKING_DIRECTORY   ${${SOURCE_DIR}}
@@ -180,11 +214,13 @@ function(git_clone)
                 OUTPUT_VARIABLE     git_output)
     endif()
     if(NOT git_result EQUAL "0")
-        set(${PARGS_PROJECT_NAME}_CLONE_RESULT FALSE CACHE INTERNAL "" FORCE)
-        message(WARNING "${PARGS_PROJECT_NAME} some error happens. ${git_output}")  #ToDo: maybe FATAL_ERROR?
+        set(${CLONE_RESULT} FALSE CACHE INTERNAL "" FORCE)
+        if(NOT PARGS_QUIET)
+            message(WARNING "${PARGS_PROJECT_NAME} some error happens. ${git_output}")  #ToDo: maybe FATAL_ERROR?
+        endif()
         return()
     else()
-        set(${PARGS_PROJECT_NAME}_CLONE_RESULT TRUE CACHE INTERNAL "" FORCE)
+        set(${CLONE_RESULT} TRUE CACHE INTERNAL "" FORCE)
     endif()
     if(NOT PARGS_QUIET)
         message(STATUS "${git_output}")
